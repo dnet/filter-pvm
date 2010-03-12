@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <fcntl.h>
+#include <string.h>
 #include "pvm3.h" /* PVM 3 include file */
 
 #define MAXPROCS 16 /* node programok max szama */
@@ -39,7 +40,8 @@ main(int argc, char** argv)
 	register i, j, k, l;
 	float unit = (float)DIMY / (float)(nprocs + 1);
 	int start = (int)floor(unit * mynum);
-	int stop = (int)ceil(unit * (mynum + 1));
+	int stop = (int)ceil(unit * (mynum + 1)) +
+		(mynum != nprocs ? 1 : 0);
 	printf(
 		"Processing lines %d -> %d (DIMY = %d, nprocs = %d, unit = %g)\n",
 		start, stop, DIMY, nprocs, unit);
@@ -55,22 +57,38 @@ main(int argc, char** argv)
 	/* Eredmenyek feldolgozasa */
 	if (mynum == 0) { /* ha ez az elso peldany */
 		int i;
+		int linesize = sizeof(char) * DIMX; /* size of a line in bytes */
+		int copylen = linesize * (int)floor(unit);
+		char tmp[DIMX * DIMY], final[DIMX * DIMY];
+		int of;
 		printf("Elso peldany feldolgozasa\n");
-		for (i = 1; i <= nprocs; i++) {
+		printf("Final image is %d bytes (sizeof = %d)\n", DIMX * DIMY, sizeof(final));
+		for (i = 0; i <= nprocs; i++) {
 			char fn[256];
-			int of;
-			info = pvm_recv(-1, TAG_SUM);
-			printf("Unpacking image from %d\n", i);
-			info = pvm_upkbyte(oup, DIMX * DIMY, 1);
-			printf("Got image back from %d\n", i);
+			if (i != 0) {
+				info = pvm_recv(-1, TAG_SUM);
+				printf("Unpacking image from %d\n", i);
+				info = pvm_upkbyte(tmp, DIMX * DIMY, 1);
+				printf("Got image back from %d\n", i);
+			}
 			sprintf(fn, "out.%d", i);
 			of = open(fn, O_WRONLY | O_CREAT, 0666);
-			if (write(of, oup, DIMX * DIMY) < DIMX * DIMY) { /* kiirjuk az eredmenyt */
+			if (write(of, tmp, DIMX * DIMY) < DIMX * DIMY) { /* kiirjuk az eredmenyt */
 				fprintf(stderr, "Iras\n");
 				exit(1);
 			}
 			close(of);
+			int offset = (int)(floor(unit * i)) * linesize; /* offset in bytes */
+			printf("Copying %d bytes from offset %d to final image\n", copylen, offset);
+			fflush(stdout);
+			memcpy(final + offset, tmp + offset, copylen);
 		}
+		of = open("out.final", O_WRONLY | O_CREAT, 0666);
+		if (write(of, final, DIMX * DIMY) < DIMX * DIMY) { /* kiirjuk az eredmenyt */
+			fprintf(stderr, "Iras-final\n");
+			exit(1);
+		}
+		close(of);
 		fflush(stdout);
 	} else { /* tovabbi peldanyok */
 		/* A tobbi peldany elkuldi az eredmenyet, majd tovabbi feladatra var */
