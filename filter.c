@@ -39,9 +39,12 @@ main(int argc, char** argv)
 	register i, j, k, l;
 	float unit = (float)DIMY / (float)(nprocs + 1);
 	int start = (int)floor(unit * mynum);
-	int stop = (int)ceil(unit * mynum) + 1;
-	for (i = 1; i < DIMX - 1; i++) { /* itt vegezzuk el a konvoluciot */
-		for (j = start; j < stop; j++) { /* a szeleket beken hagyjuk */
+	int stop = (int)ceil(unit * (mynum + 1));
+	printf(
+		"Processing lines %d -> %d (DIMY = %d, nprocs = %d, unit = %g)\n",
+		start, stop, DIMY, nprocs, unit);
+	for (i = start; i < stop - 1; i++) { /* itt vegezzuk el a konvoluciot */
+		for (j = 1; j < DIMX; j++) { /* a szeleket beken hagyjuk */
 			oup[i][j] = 0;
 			for (k = 0; k < 3; k++)
 				for (l = 0; l < 3; l++)
@@ -126,7 +129,6 @@ void startup(int *pmynum, int *pnprocs, int tids[])
 		printf("%d peldany elindult\n", numt);
 		for (i = 0; i <= nprocs; i++)
 			printf("task %d tid = %d \n", i, tids[i]);
-		*pnprocs = nprocs; /* node peldanyok szama */
 		/************************** <filt.c> *********************************/
 		int inf;
 		register i, j, k, l;
@@ -164,4 +166,5 @@ void startup(int *pmynum, int *pnprocs, int tids[])
 			if (mytid == tids[i]) mynum = i;
 	}
 	*pmynum = mynum;
+	*pnprocs = nprocs; /* node peldanyok szama */
 }
