@@ -1,0 +1,58 @@
+#####################################################################
+#
+# Makefile.aimk for PI program.
+#
+# $Id: Makefile.aimk,v 1.1 1998/11/14 20:51:16 szebi Exp $
+# RCS history:
+#   $Log: Makefile.aimk,v $
+#   Revision 1.1  1998/11/14 20:51:16  szebi
+#   Initial revision
+#
+#
+#
+# Set PVM_ROOT to the path where PVM includes and libraries are installed.
+# Set PVM_ARCH to your architecture type (SUN4, HP9K, RS6K, SGI, etc.)
+# Set ARCHLIB to any special libs needed on PVM_ARCH (-lrpc, -lsocket, etc.)
+# otherwise leave ARCHLIB blank
+#
+# PVM_ARCH and ARCHLIB are set for you if you use "$PVM_ROOT/lib/aimk"
+# instead of "make".
+#
+# aimk also creates a $PVM_ARCH directory below this one and will cd to it
+# before invoking make - this allows building in parallel on different arches.
+#
+
+SDIR	=	..
+BDIR	=	$(HOME)/pvm3/bin
+XDIR	=	$(BDIR)/$(PVM_ARCH)
+
+CC	=	cc
+CFLAGS	=	-I$(PVM_ROOT)/include
+LIBS	=	-lpvm3 $(ARCHLIB)
+
+LFLAGS	=	-L$(PVM_ROOT)/lib/$(PVM_ARCH)
+
+all:	filter
+
+clean:
+	rm -f *.o filter $(XDIR)/filter
+
+$(XDIR):
+	- mkdir $(XDIR)
+
+filter: 	$(SDIR)/filter.c $(XDIR)
+	$(CC) $(CFLAGS) -o $@ $(SDIR)/filter.c $(LFLAGS) $(LIBS) -lm 
+	mv $@ $(XDIR)
+
+master: master1 slave1
+
+master1:$(SDIR)/master1.c $(XDIR)
+	$(CC) $(CFLAGS) -o $@ $(SDIR)/master1.c $(LFLAGS) $(LIBS) 
+	mv $@ $(XDIR)
+
+slave1: $(SDIR)/slave1.c $(XDIR)
+	$(CC) $(CFLAGS) -o $@ $(SDIR)/slave1.c $(LFLAGS) $(LIBS)
+	mv $@ $(XDIR)
+
+
+
